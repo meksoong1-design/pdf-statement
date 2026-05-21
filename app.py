@@ -7,9 +7,9 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
-st.set_page_config(page_title="PDF Statement → Excel", page_icon="📊")
-st.title("📊 PDF Statement → Excel")
-st.markdown("อัปโหลดไฟล์ PDF Statement แล้วระบบจะสร้างไฟล์ Excel ให้อัตโนมัติ")
+
+st.title(" PDF Statement to excel")
+st.markdown("อัปโหลดไฟล์ PDF Statement  ")
 
 # ── Styles ───────────────────────────────────────────────────
 font_normal   = Font(name="Arial", size=10, color="000000")
