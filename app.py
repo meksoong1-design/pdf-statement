@@ -18,8 +18,8 @@ if pwd != "+123456+":
         st.info("กรุณากรอกรหัสผ่านเพื่อใช้งาน")
     st.stop()
 
-st.title("📊 PDF Statement → Excel")
-st.markdown("อัปโหลดไฟล์ PDF Statement แล้วระบบจะสร้างไฟล์ Excel ให้อัตโนมัติ")
+st.title(" PDF Statement to Excel")
+st.markdown("อัปโหลดไฟล์ PDF Statement ")
 
 # ── Styles ───────────────────────────────────────────────────
 font_normal   = Font(name="Arial", size=10, color="000000")
