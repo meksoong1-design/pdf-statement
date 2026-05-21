@@ -1,5 +1,4 @@
 pdfplumber
 openpyxl
-streamlit
 gspread
 google-auth
