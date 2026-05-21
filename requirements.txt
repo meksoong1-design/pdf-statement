@@ -2,3 +2,4 @@ pdfplumber
 openpyxl
 gspread
 google-auth
+streamlit
