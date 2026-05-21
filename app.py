@@ -7,9 +7,19 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
+# ── Password ─────────────────────────────────────────────────
+st.set_page_config(page_title="PDF Statement → Excel", page_icon="📊")
 
-st.title(" PDF Statement to excel")
-st.markdown("อัปโหลดไฟล์ PDF Statement  ")
+pwd = st.text_input("🔐 กรอกรหัสผ่าน", type="password")
+if pwd != "+123456+":
+    if pwd != "":
+        st.error("❌ รหัสผ่านไม่ถูกต้อง")
+    else:
+        st.info("กรุณากรอกรหัสผ่านเพื่อใช้งาน")
+    st.stop()
+
+st.title("📊 PDF Statement → Excel")
+st.markdown("อัปโหลดไฟล์ PDF Statement แล้วระบบจะสร้างไฟล์ Excel ให้อัตโนมัติ")
 
 # ── Styles ───────────────────────────────────────────────────
 font_normal   = Font(name="Arial", size=10, color="000000")
@@ -220,9 +230,9 @@ def make_excel(records):
         r = DATA_START_ROW + i; r1 = r-1
         ws.row_dimensions[r].height = 15.75
 
-        def w(field, value):
+        def w(field, value, _r=r):
             col = columns[field]
-            cell = ws.cell(row=r, column=col)
+            cell = ws.cell(row=_r, column=col)
             cell.value = value
             cell.font  = font_for(value)
             cell.number_format = number_formats.get(col,"General")
