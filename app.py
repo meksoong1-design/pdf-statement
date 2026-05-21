@@ -11,7 +11,7 @@ from google.oauth2.service_account import Credentials
 
 # ── Config ────────────────────────────────────────────────────
 USER_PASSWORD  = "+123456+"
-ADMIN_PASSWORD = "+admin+"
+ADMIN_PASSWORD = "181920"
 
 st.set_page_config(page_title="PDF Statement → Excel", page_icon="📊")
 
