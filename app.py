@@ -1,27 +1,139 @@
-import os
 import re
 import io
+from datetime import datetime
 import pdfplumber
 import streamlit as st
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
+import gspread
+from google.oauth2.service_account import Credentials
 
-# ── Password ─────────────────────────────────────────────────
+# ── Config ────────────────────────────────────────────────────
+USER_PASSWORD  = "+123456+"
+ADMIN_PASSWORD = "+admin+"
+
 st.set_page_config(page_title="PDF Statement → Excel", page_icon="📊")
 
-pwd = st.text_input("🔐 กรอกรหัสผ่าน", type="password")
-if pwd != "+123456+":
-    if pwd != "":
-        st.error("❌ รหัสผ่านไม่ถูกต้อง")
+# ── Google Sheets ─────────────────────────────────────────────
+SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive",
+]
+
+@st.cache_resource
+def get_gsheet():
+    creds = Credentials.from_service_account_info(
+        dict(st.secrets["gcp_service_account"]), scopes=SCOPES
+    )
+    client = gspread.authorize(creds)
+    return client.open_by_key(st.secrets["gsheet"]["spreadsheet_id"])
+
+def get_ws(name, rows, cols, header):
+    sheet = get_gsheet()
+    try:
+        return sheet.worksheet(name)
+    except gspread.WorksheetNotFound:
+        ws = sheet.add_worksheet(title=name, rows=rows, cols=cols)
+        ws.append_row(header)
+        return ws
+
+def load_stats():
+    try:
+        ws = get_ws("stats", 10, 4,
+            ["login_count","upload_count","download_count","last_access"])
+        rows = ws.get_all_values()
+        if len(rows) < 2:
+            ws.append_row([0, 0, 0, ""])
+            return {"login_count":0,"upload_count":0,"download_count":0,"last_access":None}
+        r = rows[1]
+        return {
+            "login_count":    int(r[0]) if r[0] else 0,
+            "upload_count":   int(r[1]) if r[1] else 0,
+            "download_count": int(r[2]) if r[2] else 0,
+            "last_access":    r[3] or None,
+        }
+    except Exception as e:
+        return {"login_count":0,"upload_count":0,"download_count":0,"last_access":None}
+
+def save_stats(stats):
+    try:
+        ws = get_ws("stats", 10, 4,
+            ["login_count","upload_count","download_count","last_access"])
+        ws.update("A2:D2", [[
+            stats["login_count"],
+            stats["upload_count"],
+            stats["download_count"],
+            stats["last_access"] or "",
+        ]])
+    except Exception as e:
+        st.warning(f"⚠️ บันทึก stats ไม่ได้: {e}")
+
+def append_log(event):
+    try:
+        now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        ws = get_ws("log", 2000, 2, ["timestamp","event"])
+        ws.append_row([now, event])
+        return now
+    except:
+        return datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+
+def log_event(event):
+    now = append_log(event)
+    try:
+        ws = get_ws("stats", 10, 4,
+            ["login_count","upload_count","download_count","last_access"])
+        ws.update("D2", [[now]])
+    except:
+        pass
+
+def load_logs(limit=100):
+    try:
+        ws = get_ws("log", 2000, 2, ["timestamp","event"])
+        rows = ws.get_all_values()[1:]
+        recent = rows[-limit:] if len(rows) > limit else rows
+        return [f"{r[0]} — {r[1]}" for r in reversed(recent) if len(r) >= 2]
+    except Exception as e:
+        return [f"⚠️ โหลด log ไม่ได้: {e}"]
+
+# ── Password ──────────────────────────────────────────────────
+pwd = st.text_input("🔒 กรอกรหัสผ่าน", type="password")
+
+if pwd == ADMIN_PASSWORD:
+    st.title("🔐 Admin Dashboard")
+    st.markdown("---")
+    with st.spinner("กำลังโหลดจาก Google Sheets..."):
+        stats = load_stats()
+        logs  = load_logs()
+    col1, col2, col3 = st.columns(3)
+    col1.metric("👥 เข้าใช้งาน",        stats["login_count"])
+    col2.metric("📁 อัปโหลด PDF",       stats["upload_count"])
+    col3.metric("⬇️ ดาวน์โหลด Excel",   stats["download_count"])
+    st.markdown("---")
+    st.info(f"🕐 เข้าใช้ล่าสุด: {stats['last_access'] or 'ยังไม่มี'}")
+    st.markdown("### 📋 Log ย้อนหลัง")
+    if logs:
+        for line in logs:
+            st.text(line)
     else:
-        st.info("กรุณากรอกรหัสผ่านเพื่อใช้งาน")
+        st.write("ยังไม่มีข้อมูล")
     st.stop()
 
-st.title(" PDF Statement to Excel")
-st.markdown("อัปโหลดไฟล์ PDF Statement ")
+elif pwd == USER_PASSWORD:
+    # บันทึก login
+    stats = load_stats()
+    stats["login_count"] += 1
+    save_stats(stats)
+    log_event("เข้าใช้งาน")
 
-# ── Styles ───────────────────────────────────────────────────
+elif pwd != "":
+    st.error("❌ รหัสผ่านไม่ถูกต้อง")
+    st.stop()
+else:
+    st.info("กรุณากรอกรหัสผ่านเพื่อใช้งาน")
+    st.stop()
+
+# ── Styles ────────────────────────────────────────────────────
 font_normal   = Font(name="Arial", size=10, color="000000")
 font_negative = Font(name="Arial", size=10, color="FF0000")
 font_bold     = Font(name="Arial", size=10, bold=True, color="000000")
@@ -60,7 +172,7 @@ number_formats = {
     16:fmt_decimal, 17:fmt_integer,
 }
 
-# ── Helpers ──────────────────────────────────────────────────
+# ── Helpers ───────────────────────────────────────────────────
 def to_number(value):
     if value is None: return None
     text = str(value).strip()
@@ -287,7 +399,10 @@ def make_excel(records):
     buf.seek(0)
     return buf
 
-# ── UI ───────────────────────────────────────────────────────
+# ── UI ────────────────────────────────────────────────────────
+st.title("📊 PDF Statement → Excel")
+st.markdown("อัปโหลดไฟล์ PDF Statement แล้วระบบจะสร้างไฟล์ Excel ให้อัตโนมัติ")
+
 uploaded = st.file_uploader(
     "เลือกไฟล์ PDF (เลือกได้หลายไฟล์)",
     type="pdf",
@@ -295,6 +410,12 @@ uploaded = st.file_uploader(
 )
 
 if uploaded:
+    # บันทึก upload count
+    stats = load_stats()
+    stats["upload_count"] += len(uploaded)
+    save_stats(stats)
+    log_event(f"อัปโหลด PDF {len(uploaded)} ไฟล์")
+
     st.info(f"พบ {len(uploaded)} ไฟล์ — กำลังประมวลผล...")
     records = []
     for f in uploaded:
@@ -316,11 +437,15 @@ if uploaded:
 
     records.sort(key=sort_key)
     excel_buf = make_excel(records)
-
     st.success(f"✅ สร้าง Excel สำเร็จ {len(records)} แถว")
-    st.download_button(
+
+    if st.download_button(
         label="⬇️ ดาวน์โหลด Excel",
         data=excel_buf,
         file_name="statement.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+    ):
+        stats = load_stats()
+        stats["download_count"] += 1
+        save_stats(stats)
+        log_event("ดาวน์โหลด Excel")
