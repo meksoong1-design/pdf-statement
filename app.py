@@ -13,7 +13,7 @@ from google.oauth2.service_account import Credentials
 USER_PASSWORD  = "+1234567+"
 ADMIN_PASSWORD = "181920"
 
-st.set_page_config(page_title="PDF Statement to Excel", )
+st.set_page_config(page_title="PDF Statement to Excel",)
 
 # ── Google Sheets ─────────────────────────────────────────────
 SCOPES = [
