@@ -1,6 +1,7 @@
 import re
 import io
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import pdfplumber
 import streamlit as st
@@ -21,7 +22,6 @@ ADMIN_PASSWORD = "181920"
 
 st.set_page_config(
     page_title="PDF Statement to Excel",
-
 )
 
 SCOPES = [
@@ -38,6 +38,7 @@ SCOPES = [
 def get_gsheet():
     """
     Connect to Google Sheet using Streamlit secrets.
+
     Required secrets:
 
     [gsheet]
@@ -80,6 +81,15 @@ def get_gsheet():
         sheet = client.open_by_key(st.secrets["gsheet"]["spreadsheet_id"])
         return sheet
 
+    except PermissionError as e:
+        st.error("Service Account ไม่มีสิทธิ์เข้าถึง Google Sheet")
+        st.warning(
+            "ให้เปิด Google Sheet → Share → เพิ่ม client_email จาก secrets "
+            "และตั้งสิทธิ์เป็น Editor"
+        )
+        st.exception(e)
+        st.stop()
+
     except Exception as e:
         st.error("เชื่อมต่อ Google Sheet ไม่สำเร็จ")
         st.warning(
@@ -106,6 +116,7 @@ def get_ws(name, rows, cols, header):
         return ws
 
     values = ws.get_all_values()
+
     if not values:
         ws.append_row(header)
     elif values[0] != header:
@@ -172,9 +183,9 @@ def save_stats(stats):
 
 def append_log(event):
     """
-    Add one log row to log worksheet.
+    Add one log row to log worksheet using Thailand time.
     """
-    now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    now = datetime.now(ZoneInfo("Asia/Bangkok")).strftime("%d/%m/%Y %H:%M:%S")
 
     ws = get_ws(
         "log",
@@ -190,6 +201,7 @@ def append_log(event):
 def log_event(event):
     """
     Log event and update last_access safely.
+    last_access will also use Thailand time because it comes from append_log().
     """
     now = append_log(event)
 
@@ -220,6 +232,7 @@ def load_logs(limit=100):
     recent = data_rows[-limit:] if len(data_rows) > limit else data_rows
 
     logs = []
+
     for r in reversed(recent):
         if len(r) >= 2:
             logs.append(f"{r[0]} — {r[1]}")
@@ -264,7 +277,7 @@ if pwd == ADMIN_PASSWORD:
     col3.metric("ดาวน์โหลด Excel", stats["download_count"])
 
     st.markdown("---")
-    st.info(f"เข้าใช้ล่าสุด: {stats['last_access'] or 'ยังไม่มีข้อมูล'}")
+    st.info(f"เข้าใช้ล่าสุด เวลาไทย: {stats['last_access'] or 'ยังไม่มีข้อมูล'}")
 
     st.markdown("### Log ย้อนหลัง")
 
