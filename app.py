@@ -21,8 +21,7 @@ ADMIN_PASSWORD = "181920"
 
 st.set_page_config(
     page_title="PDF Statement to Excel",
-    page_icon="📄",
-    layout="wide"
+
 )
 
 SCOPES = [
