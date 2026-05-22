@@ -13,7 +13,7 @@ from google.oauth2.service_account import Credentials
 USER_PASSWORD  = "+1234567+"
 ADMIN_PASSWORD = "181920"
 
-st.set_page_config(page_title="PDF Statement to Excel",)
+st.set_page_config(page_title="PDF Statement to Excel")
 
 # ── Google Sheets ─────────────────────────────────────────────
 SCOPES = [
@@ -53,7 +53,7 @@ def load_stats():
             "download_count": int(r[2]) if r[2] else 0,
             "last_access":    r[3] or None,
         }
-    except Exception as e:
+    except Exception:
         return {"login_count":0,"upload_count":0,"download_count":0,"last_access":None}
 
 def save_stats(stats):
@@ -66,7 +66,7 @@ def save_stats(stats):
             stats["download_count"],
             stats["last_access"] or "",
         ]])
-    except Exception as e:
+    except Exception:
         pass
 
 def append_log(event):
@@ -94,24 +94,24 @@ def load_logs(limit=100):
         recent = rows[-limit:] if len(rows) > limit else rows
         return [f"{r[0]} — {r[1]}" for r in reversed(recent) if len(r) >= 2]
     except Exception as e:
-        return [f"⚠️ โหลด log ไม่ได้: {e}"]
+        return [f"โหลด log ไม่ได้: {e}"]
 
 # ── Password ──────────────────────────────────────────────────
-pwd = st.text_input("🔒 กรอกรหัสผ่าน", type="password")
+pwd = st.text_input("กรอกรหัสผ่าน", type="password")
 
 if pwd == ADMIN_PASSWORD:
-    st.title("🔐 Admin Dashboard")
+    st.title("Admin Dashboard")
     st.markdown("---")
-    with st.spinner("กำลังโหลดจาก Google Sheets..."):
+    with st.spinner("กำลังโหลดข้อมูล..."):
         stats = load_stats()
         logs  = load_logs()
     col1, col2, col3 = st.columns(3)
-    col1.metric("👥 เข้าใช้งาน",        stats["login_count"])
-    col2.metric("📁 อัปโหลด PDF",       stats["upload_count"])
-    col3.metric("⬇️ ดาวน์โหลด Excel",   stats["download_count"])
+    col1.metric("เข้าใช้งาน",    stats["login_count"])
+    col2.metric("อัปโหลด PDF",   stats["upload_count"])
+    col3.metric("ดาวน์โหลด Excel", stats["download_count"])
     st.markdown("---")
-    st.info(f"🕐 เข้าใช้ล่าสุด: {stats['last_access'] or 'ยังไม่มี'}")
-    st.markdown("### 📋 Log ย้อนหลัง")
+    st.info(f"เข้าใช้ล่าสุด: {stats['last_access'] or 'ยังไม่มี'}")
+    st.markdown("### Log ย้อนหลัง")
     if logs:
         for line in logs:
             st.text(line)
@@ -120,14 +120,13 @@ if pwd == ADMIN_PASSWORD:
     st.stop()
 
 elif pwd == USER_PASSWORD:
-    # บันทึก login
     stats = load_stats()
     stats["login_count"] += 1
     save_stats(stats)
     log_event("เข้าใช้งาน")
 
 elif pwd != "":
-    st.error("❌ รหัสผ่านไม่ถูกต้อง")
+    st.error("รหัสผ่านไม่ถูกต้อง")
     st.stop()
 else:
     st.info("กรุณากรอกรหัสผ่านเพื่อใช้งาน")
@@ -400,17 +399,16 @@ def make_excel(records):
     return buf
 
 # ── UI ────────────────────────────────────────────────────────
-st.title("📊 PDF Statement → Excel")
-st.markdown("อัปโหลดไฟล์ PDF Statement แล้วระบบจะสร้างไฟล์ Excel ให้อัตโนมัติ")
+st.title("PDF Statement to Excel")
+st.markdown("อัปโหลดไฟล์ PDF แล้วระบบจะสร้าง Excel ให้อัตโนมัติ")
 
 uploaded = st.file_uploader(
-    "เลือกไฟล์ PDF (เลือกได้หลายไฟล์)",
+    "เลือกไฟล์ PDF (เลือกได้หลายไฟล์พร้อมกัน)",
     type="pdf",
     accept_multiple_files=True
 )
 
 if uploaded:
-    # บันทึก upload count
     stats = load_stats()
     stats["upload_count"] += len(uploaded)
     save_stats(stats)
@@ -422,7 +420,7 @@ if uploaded:
         data = read_pdf(f.read(), f.name)
         records.append(data)
         ok = lambda v: f"{v:,.2f}" if v is not None else "—"
-        st.write(f"✅ **{f.name}** | วันที่: {data['date']} | "
+        st.write(f"{f.name} | วันที่: {data['date']} | "
                  f"Realized: {ok(data['realized'])} | "
                  f"Equity: {ok(data['equity'])}")
 
@@ -437,10 +435,10 @@ if uploaded:
 
     records.sort(key=sort_key)
     excel_buf = make_excel(records)
-    st.success(f"✅ สร้าง Excel สำเร็จ {len(records)} แถว")
+    st.success(f"สร้าง Excel สำเร็จ {len(records)} แถว")
 
     if st.download_button(
-        label="⬇️ ดาวน์โหลด Excel",
+        label="ดาวน์โหลด Excel",
         data=excel_buf,
         file_name="statement.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
