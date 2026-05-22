@@ -10,7 +10,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 
 # ── Config ────────────────────────────────────────────────────
-USER_PASSWORD  = "+1234567+"
+USER_PASSWORD  = "+123456+"
 ADMIN_PASSWORD = "181920"
 
 st.set_page_config(page_title="PDF Statement to Excel")
